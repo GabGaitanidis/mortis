@@ -19,11 +19,5 @@ public class QuestionModule implements Module {
         }
     }
 
-    private void speak(String text) {
-        try {
-            new Ttsbridge().speakOnce(text);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+    
 }

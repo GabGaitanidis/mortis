@@ -9,16 +9,9 @@ from env_utils import load_env
 load_env()
 
 voice = PiperVoice.load(os.getenv("MORTIS_PIPER_VOICE_PATH", str(Path.home() / "piper-voices" / "en_US-lessac-medium.onnx")))
-text = ""
+text = "Hello sir! I'm listening"
 
-OUTPUT = os.getenv("MORTIS_WELCOME_TEXT_PATH", str(Path.home() / "welcomeMortis.txt"))
 INPUT  = os.getenv("MORTIS_WELCOME_AUDIO_PATH", str(Path.home() / "welcomeMortis.wav"))
-with open(OUTPUT) as f:
-    text = f.read()
-
-
-if not text:
-    sys.exit(0)
 
 with wave.open(INPUT, "wb") as wav_file:
     wav_file.setnchannels(1)

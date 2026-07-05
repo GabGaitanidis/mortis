@@ -31,11 +31,6 @@ public class BroswerModule implements Module{
         }
      }
 
-     private void speak(String text) {
-         try {
-             new Ttsbridge().speakOnce(text);
-         } catch (IOException e) {
-             e.printStackTrace();
-         }
-     }
+    
+     
 }
