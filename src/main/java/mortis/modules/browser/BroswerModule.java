@@ -6,14 +6,11 @@ import java.net.URISyntaxException;
 
 import mortis.core.Module;
 import mortis.core.*;
-import mortis.modules.file.FileHandler;
-import mortis.utils.Env;
-import java.nio.file.Path;
+import mortis.speech.Ttsbridge;
 public class BroswerModule implements Module{
      @Override
      public void execute(Command command) throws IOException, URISyntaxException {
         BrowserHandler handler = new BrowserHandler((String) command.get("url"));
-    FileHandler answerHandler = new FileHandler(Env.get("MORTIS_ANSWER_TEXT_PATH", Path.of(System.getProperty("user.home"), "mortisAnswer.txt").toString()));
 
         switch (command.getAction()) {
             case "open":
@@ -23,14 +20,22 @@ public class BroswerModule implements Module{
                     if (host.startsWith("www.")) host = host.substring(4);
                     int dot = host.lastIndexOf('.');
                     if (dot > 0) host = host.substring(0, dot);
-                    answerHandler.writeFile("Opening " + host);
+                    speak("Opening " + host);
                 } catch (Exception e) {
-                    answerHandler.writeFile("I cannot open that URL");
+                    speak("I cannot open that URL");
                 }
                 break;
         
             default:
                 break;
         }
+     }
+
+     private void speak(String text) {
+         try {
+             new Ttsbridge().speakOnce(text);
+         } catch (IOException e) {
+             e.printStackTrace();
+         }
      }
 }

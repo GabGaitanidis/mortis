@@ -45,7 +45,6 @@ public class Mortis {
                         } else {
                             manager.addRecentActivity(activityName, module);
                         }
-                        JPython.mortisAnswer();
                     }
                 } else {
                     Map<String, Object> paramsMap = mapper.convertValue(
@@ -65,7 +64,6 @@ public class Mortis {
                     } else {
                         manager.addRecentActivity(activityName, module);
                     }
-                    JPython.mortisAnswer();
                 }
             result = JPython.getInputFromUser();
 

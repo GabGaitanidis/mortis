@@ -4,8 +4,8 @@ import mortis.core.Module;
 import java.io.IOException;
 
 import mortis.core.*;
-import mortis.utils.Env;
 import java.nio.file.Path;
+import mortis.speech.Ttsbridge;
 
 public class FileModule implements Module{
 
@@ -15,46 +15,52 @@ public class FileModule implements Module{
         if (path == "") {
             path = "Desktop";
         }
-        String fileRoot = Env.get("MORTIS_FILES_ROOT", Path.of(System.getProperty("user.home"), "Desktop").toString());
-        String answerPath = Env.get("MORTIS_ANSWER_TEXT_PATH", Path.of(System.getProperty("user.home"), "mortisAnswer.txt").toString());
+        String fileRoot = Path.of(System.getProperty("user.home"), "Desktop").toString();
         FileHandler handler = new FileHandler(fileRoot + "/" + command.get("path")); 
-        FileHandler answerHandler = new FileHandler(answerPath);
         switch (command.getAction()) {
             case "create":
                 try {
                     handler.createFile();
-                    answerHandler.writeFile("File created");
+                    speak("File created");
                 } catch(IOException e ) {
-                    answerHandler.writeFile("I cannot create the file");
+                    speak("I cannot create the file");
                 }
                 break;
             case "read":
                 try {
                     String content = handler.readFile();
                     System.out.println(content);
-                    answerHandler.writeFile("File contents: " + content);
+                    speak("File contents: " + content);
                 } catch (Exception e) {
-                    answerHandler.writeFile("I cannot read the file");
+                    speak("I cannot read the file");
                 }
                 break;
 
             case "write":
                 try {
                     handler.writeFile((String) command.get("content"));
-                    answerHandler.writeFile("File written successfully");
+                    speak("File written successfully");
                 } catch (Exception e) {
-                    answerHandler.writeFile("I cannot write to the file");
+                    speak("I cannot write to the file");
                 }
                 break;
 
             case "delete":
                 try {
                     handler.deleteFile();
-                    answerHandler.writeFile("File deleted successfully");
+                    speak("File deleted successfully");
                 } catch (Exception e) {
-                    answerHandler.writeFile("I cannot delete the file");
+                    speak("I cannot delete the file");
                 }
                 break;
+        }
+    }
+
+    private void speak(String text) {
+        try {
+            new Ttsbridge().speakOnce(text);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

@@ -164,7 +164,6 @@ public class GroqClient {
       }
       params.addProperty("url", target);
       root.add("params", params);
-      // Return as a single-element array to match the required output format
       JsonArray arr = new JsonArray();
       arr.add(root);
       return arr.toString();

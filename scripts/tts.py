@@ -8,25 +8,39 @@ from env_utils import load_env
 
 load_env()
 
-voice = PiperVoice.load(os.getenv("MORTIS_PIPER_VOICE_PATH", str(Path.home() / "piper-voices" / "en_US-lessac-medium.onnx")))
-text = ""
+voice = PiperVoice.load(
+    os.getenv("MORTIS_PIPER_VOICE_PATH", str(Path.home() / "piper-voices" / "en_US-lessac-medium.onnx"))
+)
 
-OUTPUT = os.getenv("MORTIS_ANSWER_TEXT_PATH", str(Path.home() / "mortisAnswer.txt"))
-INPUT  = os.getenv("MORTIS_ANSWER_AUDIO_PATH", str(Path.home() / "mortisAnswer.wav"))
-with open(OUTPUT) as f:
-    text = f.read()
+AUDIO_PATH = os.getenv("MORTIS_ANSWER_AUDIO_PATH", str(Path.home() / "mortisAnswer.wav"))
 
+def speak(text):
+    if not text:
+        return
 
-if not text:
-    sys.exit(0)
+    with wave.open(AUDIO_PATH, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(voice.config.sample_rate)
 
-with wave.open(INPUT, "wb") as wav_file:
-    wav_file.setnchannels(1)
-    wav_file.setsampwidth(2) 
-    wav_file.setframerate(voice.config.sample_rate)
+        for chunk in voice.synthesize(text):
+            wav_file.writeframes(chunk.audio_int16_bytes)
 
-    for chunk in voice.synthesize(text):
-        wav_file.writeframes(chunk.audio_int16_bytes)
+    subprocess.run(["paplay", AUDIO_PATH])
 
+def main():
+    for line in sys.stdin:
+        text = line.strip()
+        if not text:
+            continue
+        if text == "__EXIT__":
+            break
 
-subprocess.run(["paplay", INPUT])
+        try:
+            speak(text)
+            print("DONE", flush=True)
+        except Exception as e:
+            print(f"ERROR: {e}", flush=True)
+
+if __name__ == "__main__":
+    main()
