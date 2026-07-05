@@ -1,0 +1,27 @@
+package mortis.core;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+import mortis.modules.browser.*;
+import mortis.modules.file.*;
+import mortis.modules.question.QuestionModule;
+public class CommandRouter {
+    private Map<String, Module> modules =  new HashMap<>();
+
+    public CommandRouter() {
+        modules.put("file", new FileModule());
+        modules.put("browser", new BroswerModule());
+        modules.put("question", new QuestionModule());
+    }
+
+    public void Route(Command command) throws IOException, URISyntaxException {
+        Module module = modules.get(command.getModule());
+        if (module != null) {
+            module.execute(command);
+        } else {
+            System.out.println("unknown module");
+        }
+    }
+}
+
