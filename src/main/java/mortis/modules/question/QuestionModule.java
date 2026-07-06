@@ -2,7 +2,7 @@ package mortis.modules.question;
 
 import mortis.core.Command;
 import mortis.core.Module;
-import mortis.speech.Ttsbridge;
+import mortis.speech.TtsBridge;
 
 public class QuestionModule implements Module {
     @Override

@@ -6,7 +6,7 @@ import java.net.URISyntaxException;
 
 import mortis.core.Module;
 import mortis.core.*;
-import mortis.speech.Ttsbridge;
+import mortis.speech.TtsBridge;
 public class BroswerModule implements Module{
      @Override
      public void execute(Command command) throws IOException, URISyntaxException {

@@ -7,14 +7,16 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.file.Path;
 
+import mortis.utils.Env;
+
 public class TtsBridge {
     private Process process;
     private BufferedWriter writer;
     private BufferedReader reader;
 
     public void start() throws IOException {
-        String pythonExecutable = getEnv("MORTIS_PYTHON_EXECUTABLE", "python3");
-        String script = getEnv("MORTIS_TTS_SCRIPT", Path.of(System.getProperty("user.dir"), "scripts", "tts.py").toString());
+        String pythonExecutable = Env.get("MORTIS_PYTHON_EXECUTABLE", "python3");
+        String script = Env.get("MORTIS_TTS_SCRIPT", Path.of(System.getProperty("user.dir"), "scripts", "tts.py").toString());
         
         ProcessBuilder pb = new ProcessBuilder(pythonExecutable, "-u", script);
         pb.redirectErrorStream(true);
@@ -59,11 +61,4 @@ public class TtsBridge {
         }
     }
 
-    private String getEnv(String key, String defaultValue) {
-        String value = System.getenv(key);
-        if (value == null || value.isBlank()) {
-            return defaultValue;
-        }
-        return value;
-    }
 }

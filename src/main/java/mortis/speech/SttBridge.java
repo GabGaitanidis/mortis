@@ -1,28 +1,71 @@
 package mortis.speech;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.nio.file.Path;
 
 import mortis.utils.Env;
 
-// public class VoiceManager {
-//     private final String path = Env.get("MORTIS_SPEECH_TEXT_PATH", Path.of(System.getProperty("user.home"), "output.txt").toString());
-//     public String getTextFromSpeech() {
-//         StringBuilder data = new StringBuilder();
-//         File output = new File(path);
+public class SttBridge {
+    private Process process;
+    private BufferedWriter writer;
+    private BufferedReader reader;
 
-//         try (Scanner scanner = new Scanner(output)) {
-//             while (scanner.hasNextLine()) {
-//                 data.append(scanner.nextLine());
-//                 System.out.println(data);
-//             }
-//         } catch (FileNotFoundException e) {
-//             System.out.println("An error occurred.");
-//             e.printStackTrace();
-//         }
+    public void start() throws IOException {
+        String pythonExecutable = Env.get("MORTIS_PYTHON_EXECUTABLE", "python3");
+        String script = Env.get("MORTIS_STT_SCRIPT", Path.of(System.getProperty("user.dir"), "scripts", "stt.py").toString());
         
-//         return data.toString();
-//     }
-// }
+        ProcessBuilder pb = new ProcessBuilder(pythonExecutable, "-u", script);
+        pb.redirectErrorStream(false);
+        this.process = pb.start();
+        this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+        this.reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+    }
+
+    public String listen() throws IOException {
+        String ready = reader.readLine();
+        if (!ready.equals("READY")) {
+            throw new IOException("STT process did not start correctly, got: " + ready);
+        }
+        writer.write("listen\n");
+        writer.flush();
+
+        String line =  reader.readLine();
+        if (line == null) {
+            throw new IOException("STT process closed the pipe unexpectedly");
+        }
+        if (line.startsWith("ERROR:")) {
+            throw new IOException("STT error: " + line.substring(6));
+        }
+        return line;
+    }
+
+
+
+    public void shutdown() throws IOException {
+        if (writer != null) {
+            writer.write("__EXIT__");
+            writer.newLine();
+            writer.flush();
+            writer.close();
+        }
+        if (reader != null) {
+            reader.close();
+        }
+        if (process != null) {
+            process.destroy();
+        }
+    }
+
+    public String listenOnce() throws IOException {
+    if (process == null || !process.isAlive()) {
+        start();
+    }
+    return listen();
+}
+
+    
+}  

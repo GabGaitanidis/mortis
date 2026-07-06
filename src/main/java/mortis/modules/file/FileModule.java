@@ -5,7 +5,7 @@ import java.io.IOException;
 
 import mortis.core.*;
 import java.nio.file.Path;
-import mortis.speech.Ttsbridge;
+import mortis.speech.TtsBridge;
 
 public class FileModule implements Module{
 
