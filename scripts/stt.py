@@ -17,26 +17,21 @@ signal.signal(signal.SIGTERM, handle_exit)
 from env_utils import load_env
 load_env()
 
-OUTPUT = os.getenv("MORTIS_SPEECH_AUDIO_PATH", "/home/gabz/output.wav")
-TEXT_OUTPUT = os.getenv("MORTIS_SPEECH_TEXT_PATH", "/home/gabz/output.txt")
-
-if os.path.exists(OUTPUT):
-    os.remove(OUTPUT)
-
 SAMPLE_RATE = 16000
-FRAME_DURATION_MS = 30           
+FRAME_DURATION_MS = 30
 FRAME_SIZE = int(SAMPLE_RATE * FRAME_DURATION_MS / 1000)
-SILENCE_TIMEOUT_MS = 1200        
+SILENCE_TIMEOUT_MS = 1200
 SILENCE_FRAMES = SILENCE_TIMEOUT_MS // FRAME_DURATION_MS
-MAX_RECORD_SECONDS = 15         
-VAD_AGGRESSIVENESS = 0          
+MAX_RECORD_SECONDS = 15
+VAD_AGGRESSIVENESS = 0
 
 vad = webrtcvad.Vad(VAD_AGGRESSIVENESS)
+client = Groq(api_key=os.getenv("GROQ_API_KEY", ""))
 
 def record_until_silence():
     frames = []
     silence_count = 0
-    triggered = False  # only start counting silence after real speech begins
+    triggered = False
     max_frames = int(MAX_RECORD_SECONDS * 1000 / FRAME_DURATION_MS)
 
     with sd.RawInputStream(samplerate=SAMPLE_RATE, blocksize=FRAME_SIZE,
@@ -59,33 +54,57 @@ def record_until_silence():
 
     return b"".join(frames), triggered
 
-raw_audio, got_speech = record_until_silence()
-audio = np.frombuffer(raw_audio, dtype=np.int16)
+HALLUCINATION_PHRASES = {
+    "thank you", "thanks for watching", "thank you for watching",
+    "you", "bye", "subscribe", "subtitles by",
+}
 
-if not got_speech or np.abs(audio).mean() < 500:
-    with open(TEXT_OUTPUT, "w") as f:
-        f.write("no input")
-    sys.exit(0)
+def process_once():
+    raw_audio, got_speech = record_until_silence()
+    audio = np.frombuffer(raw_audio, dtype=np.int16)
 
-sf.write(OUTPUT, audio, SAMPLE_RATE)
+    mean_amp = np.abs(audio).mean()
+    print(f"DEBUG mean amplitude: {mean_amp}", file=sys.stderr)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY", ""))
+    if not got_speech or mean_amp < 1200:
+        return "no input"
 
-with open(OUTPUT, "rb") as f:
-    transcription = client.audio.transcriptions.create(
-        model="whisper-large-v3",
-        file=f,
-        language="en"
-    )
+    buf_path = "/tmp/mortis_stt_tmp.wav"
+    sf.write(buf_path, audio, SAMPLE_RATE)
 
-text = transcription.text.strip()
+    with open(buf_path, "rb") as f:
+        transcription = client.audio.transcriptions.create(
+            model="whisper-large-v3",
+            file=f,
+            language="en"
+        )
 
-if not text or len(text.split()) < 2:
-    with open(TEXT_OUTPUT, "w") as f:
-        f.write("")
-    sys.exit(0)
+    text = transcription.text.strip()
 
-with open(TEXT_OUTPUT, "w") as f:
-    f.write(text)
+    if not text or len(text.split()) < 2:
+        return ""
 
-print(text, flush=True)
+    normalized = text.lower().strip(".").strip()
+    if normalized in HALLUCINATION_PHRASES:
+        print(f"DEBUG filtered hallucination: {text!r}", file=sys.stderr)
+        return "no input"
+
+    return text
+
+def main():
+    print("READY", flush=True)
+    for line in sys.stdin:
+        cmd = line.strip()
+        if not cmd:
+            continue
+        if cmd == "__EXIT__":
+            break
+        if cmd == "listen":
+            try:
+                result = process_once()
+            except Exception as e:
+                result = f"ERROR:{e}"
+            print(result.replace("\n", " "), flush=True)
+
+if __name__ == "__main__":
+    main()

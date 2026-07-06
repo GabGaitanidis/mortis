@@ -56,6 +56,7 @@ public class GroqClient {
             - memory: store, recall
             - system: open_app, shutdown, volume
             - question: answer
+            - unknown (when unclear) 
             MODULES:
             - file:
             - write: params MUST include "path" (string) and "content" (string, use "" if no content was specified, and if content == "" then use create action)
@@ -74,7 +75,8 @@ public class GroqClient {
 
             DISAMBIGUATION
             If module is question, then return a JSON array containing one operation object with the final answer in params.answer.
-            Do not add a separate question field.
+            Do not add a separate question field. 
+            - Do NOT escape single quotes with a backslash. Only use standard JSON escapes (\", \\, \n, \t). Never output \'.
             Example:
             [
               {
@@ -87,12 +89,12 @@ public class GroqClient {
             
             FAIL SAFE:
             If unclear, return a single-element array with a memory store operation, for example:
-            [ { "activityName": "none", "module": "memory", "action": "store", "params": { "key": "unclassified_input", "value": "<user input>" } } ]
+            [ { "activityName": "none", "module": "unknown", "action": "none", "params": { "key": "unclassified_input", "value": "<user input>" } } ]
             """;
 
     public String ask(String userInput, List<String> knownFiles, List<String> knownApps, Map<String, String> recentActivities) throws Exception {
       if (API_KEY == null || API_KEY.isBlank()) {
-        System.err.println("No key");
+        System.out.println("No key");
         return fallbackResponse(userInput);
       }
         String context = "KNOWN_FILES: " + knownFiles

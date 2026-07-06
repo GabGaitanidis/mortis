@@ -6,6 +6,7 @@ import java.util.Map;
 import mortis.modules.browser.*;
 import mortis.modules.file.*;
 import mortis.modules.question.QuestionModule;
+import mortis.modules.unknown.UnKnownModule;
 public class CommandRouter {
     private Map<String, Module> modules =  new HashMap<>();
 
@@ -13,6 +14,7 @@ public class CommandRouter {
         modules.put("file", new FileModule());
         modules.put("browser", new BroswerModule());
         modules.put("question", new QuestionModule());
+        modules.put("unknown", new UnKnownModule());
     }
 
     public void Route(Command command) throws IOException, URISyntaxException {

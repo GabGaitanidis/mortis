@@ -17,8 +17,16 @@ public class AIManager {
     public String getData() throws FileNotFoundException, Exception {
         List<String> knownFiles = List.of("google.txt", "report.docx", "notes.md");
         List<String> knownApps = List.of("discord");
-        System.out.println("got");
-        return this.client.ask(sttBridge.listenOnce() ,knownFiles, knownApps, this.recent);
+
+        String transcript = sttBridge.listenOnce();
+        System.out.println("transcript: " + transcript);
+
+        if (transcript == null || transcript.isBlank() || transcript.equals("no input")) {
+            System.out.println("No input detected, ending session.");
+            return null;
+        }
+
+        return this.client.ask(transcript, knownFiles, knownApps, this.recent);
     }
 
     public void addRecentActivity(String activityName, String module, String filePath) {

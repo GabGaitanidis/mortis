@@ -19,10 +19,21 @@ public class TtsBridge {
         String script = Env.get("MORTIS_TTS_SCRIPT", Path.of(System.getProperty("user.dir"), "scripts", "tts.py").toString());
         
         ProcessBuilder pb = new ProcessBuilder(pythonExecutable, "-u", script);
-        pb.redirectErrorStream(true);
+        pb.redirectErrorStream(false);
         this.process = pb.start();
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
         this.reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+        Thread errDrain = new Thread(() -> {
+        try (BufferedReader err = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = err.readLine()) != null) {
+                    System.err.println("[tts-stderr] " + line);
+                }
+            } catch (IOException ignored) {}
+        });
+        errDrain.setDaemon(true);
+        errDrain.start();
     }
 
     public void speak(String text) throws IOException {
@@ -33,7 +44,13 @@ public class TtsBridge {
     }
 
     public void awaitDone() throws IOException {
-        reader.readLine();
+        String line = reader.readLine();
+        if (line == null) {
+            throw new IOException("TTS process closed pipe before signaling done");
+        }
+        if (!"DONE".equals(line.trim())) {
+            System.err.println("Unexpected TTS signal line: " + line);
+        }
     }
 
     public void shutdown() throws IOException {

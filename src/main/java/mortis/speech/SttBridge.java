@@ -17,23 +17,24 @@ public class SttBridge {
     public void start() throws IOException {
         String pythonExecutable = Env.get("MORTIS_PYTHON_EXECUTABLE", "python3");
         String script = Env.get("MORTIS_STT_SCRIPT", Path.of(System.getProperty("user.dir"), "scripts", "stt.py").toString());
-        
+
         ProcessBuilder pb = new ProcessBuilder(pythonExecutable, "-u", script);
         pb.redirectErrorStream(false);
         this.process = pb.start();
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
         this.reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+        String ready = reader.readLine();
+        if (ready == null || !ready.equals("READY")) {
+            throw new IOException("STT process did not start correctly, got: " + ready);
+        }
     }
 
     public String listen() throws IOException {
-        String ready = reader.readLine();
-        if (!ready.equals("READY")) {
-            throw new IOException("STT process did not start correctly, got: " + ready);
-        }
         writer.write("listen\n");
         writer.flush();
 
-        String line =  reader.readLine();
+        String line = reader.readLine();
         if (line == null) {
             throw new IOException("STT process closed the pipe unexpectedly");
         }
@@ -42,8 +43,6 @@ public class SttBridge {
         }
         return line;
     }
-
-
 
     public void shutdown() throws IOException {
         if (writer != null) {
@@ -61,11 +60,9 @@ public class SttBridge {
     }
 
     public String listenOnce() throws IOException {
-    if (process == null || !process.isAlive()) {
-        start();
+        if (process == null || !process.isAlive()) {
+            start();
+        }
+        return listen();
     }
-    return listen();
 }
-
-    
-}  

@@ -15,7 +15,6 @@ public class FileHandler {
     public boolean createFile() throws IOException {
         File file = new File(this.path);
         try {
-            // Ensure parent directories exist for nested paths
             File parent = file.getParentFile();
             if (parent != null && !parent.exists()) {
                 parent.mkdirs();
