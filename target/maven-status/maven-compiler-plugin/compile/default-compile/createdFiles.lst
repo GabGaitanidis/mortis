@@ -3,6 +3,7 @@ mortis/utils/Env.class
 mortis/modules/browser/BroswerModule.class
 mortis/speech/VoiceManager.class
 mortis/ai/AIManager.class
+mortis/speech/Ttsbridge.class
 mortis/core/CommandRouter.class
 mortis/Mortis$1.class
 mortis/Mortis.class

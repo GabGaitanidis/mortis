@@ -33,11 +33,5 @@ public class JPython {
         return result;
     }
 
-    public static void welcomeMortis() throws IOException, InterruptedException {
-        String pythonExecutable = Env.get("MORTIS_PYTHON_EXECUTABLE", Paths.get(System.getProperty("user.home"), "mortis-stt", "venv", "bin", "python3").toString());
-        String welcomeScript = Env.get("MORTIS_WELCOME_SCRIPT", Paths.get(System.getProperty("user.dir"), "scripts", "welcomeMortis.py").toString());
-        ProcessBuilder pb = new ProcessBuilder(pythonExecutable, welcomeScript);
-        Process p = pb.start();
-        p.waitFor();
-    }
+
 }

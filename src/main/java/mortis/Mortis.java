@@ -10,12 +10,14 @@ import mortis.ai.AIManager;
 import mortis.core.Command;
 import mortis.core.CommandRouter;
 import mortis.core.ConvertToJson;
+import mortis.speech.TtsBridge;
 import mortis.utils.*;
 public class Mortis {
     public static void main(String args[]) throws FileNotFoundException, Exception {
-        System.out.println("Hello sir, I'm listening!"); 
-        JPython.welcomeMortis();
+        TtsBridge ttsBridge = new TtsBridge();
+        ttsBridge.speakOnce("Hello sir! I'm listening");
         AIManager manager = new AIManager();
+        
         CommandRouter router = new CommandRouter();
         String result = JPython.getInputFromUser();
         while (result != null) {
@@ -25,7 +27,7 @@ public class Mortis {
                 System.out.println(jsonData);
 
                 if (jsonData == null) {
-                    // nothing to do
+                    return;
                 } else if (jsonData.isArray()) {
                     for (JsonNode item : jsonData) {
                         Map<String, Object> paramsMap = mapper.convertValue(
