@@ -1,19 +1,16 @@
 package mortis.ai;
 import java.io.FileNotFoundException;
 import java.util.List;
-import java.util.HashMap;
 import mortis.speech.*;
 public class AIManager {
     private GroqClient client;
     private SttBridge sttBridge;
     private TtsBridge ttsBridge;
-    private HashMap<String, String> recent;
 
     public AIManager(SttBridge sttBridge, TtsBridge ttsBridge) {
         this.client = new GroqClient();
         this.sttBridge = sttBridge;
         this.ttsBridge = ttsBridge;
-        this.recent = new HashMap<>();
     }
 
     public String getData() throws FileNotFoundException, Exception {
@@ -29,18 +26,8 @@ public class AIManager {
             return null;
         }
 
-        return this.client.ask(transcript, knownFiles, knownApps, this.recent);
+        return this.client.ask(transcript, knownFiles, knownApps);
     }
 
-    public void addRecentActivity(String activityName, String module, String filePath) {
-        if ("file".equals(module) && filePath != null) {
-            recent.put(activityName, filePath);
-        } else {
-            recent.put(activityName, module);
-        }
-    }
 
-    public void addRecentActivity(String activityName, String module) {
-        addRecentActivity(activityName, module, null);
-    }
 }

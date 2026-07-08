@@ -9,8 +9,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 
 import mortis.utils.Env;
 
@@ -63,13 +61,8 @@ public class GroqClient {
             - read: params MUST include "path"
             - delete: params MUST include "path"
             DISAMBIGUATION:
-            RECENT ACTIVITIES (from previous commands in this session):
-            Use the recent activities list to remember what files, apps, or tabs were recently accessed.
-            If user says "that file", "the app I just opened", or "that tab" refer to recent activities.
-            
-            DISAMBIGUATION:
             If the user's target name matches an entry in KNOWN_FILES, use module "file".
-            If it matches KNOWN_APPS or recent activities, use the appropriate module.
+            If it matches KNOWN_APPS, use the appropriate module.
             Otherwise, if it looks like a website, brand, or search term, use module "browser".
             For each call, provide a valid activityName describing what the user wants to do.
 
@@ -92,14 +85,13 @@ public class GroqClient {
             [ { "activityName": "none", "module": "unknown", "action": "none", "params": { "key": "unclassified_input", "value": "<user input>" } } ]
             """;
 
-    public String ask(String userInput, List<String> knownFiles, List<String> knownApps, Map<String, String> recentActivities) throws Exception {
+    public String ask(String userInput, List<String> knownFiles, List<String> knownApps) throws Exception {
       if (API_KEY == null || API_KEY.isBlank()) {
         System.out.println("No key");
         return fallbackResponse(userInput);
       }
         String context = "KNOWN_FILES: " + knownFiles
-          + "\nKNOWN_APPS: " + knownApps
-          + "\nRECENT_ACTIVITIES: " + String.valueOf(recentActivities);
+          + "\nKNOWN_APPS: " + knownApps;
 
         JsonObject payload = new JsonObject();
         payload.addProperty("model", "llama-3.3-70b-versatile");
@@ -169,9 +161,5 @@ public class GroqClient {
       JsonArray arr = new JsonArray();
       arr.add(root);
       return arr.toString();
-    }
-
-    public String ask(String userInput, List<String> knownFiles, List<String> knownApps) throws Exception {
-        return ask(userInput, knownFiles, knownApps, new HashMap<>());
     }
 }

@@ -36,7 +36,7 @@ public class Mortis {
             System.out.println("Waiting for wake word...");
             waitWake.waitForWakeWord();
 
-            ttsBridge.speak("Hello sir! I'm listening");
+            ttsBridge.speak("Hello sir! What can I do for you?");
             start(manager, router, mapper, ttsBridge);
         }
     }
@@ -78,12 +78,6 @@ public class Mortis {
             paramsMap
         ));
         String module = item.get("module").asText();
-        String activityName = item.get("activityName").asText();
-        if ("file".equals(module) && item.get("params").has("path")) {
-            String filePath = item.get("params").get("path").asText();
-            manager.addRecentActivity(activityName, module, filePath);
-        } else {
-            manager.addRecentActivity(activityName, module);
-        }
+        String activityName = item.get("activityName").asText();         
     }
 }
