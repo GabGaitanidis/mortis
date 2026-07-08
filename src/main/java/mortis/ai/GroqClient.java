@@ -85,13 +85,13 @@ public class GroqClient {
             [ { "activityName": "none", "module": "unknown", "action": "none", "params": { "key": "unclassified_input", "value": "<user input>" } } ]
             """;
 
-    public String ask(String userInput, List<String> knownFiles, List<String> knownApps) throws Exception {
+    public String ask(String userInput, List<String> knownFiles, List<String> knownApps, ActivityMemory memory) throws Exception {
       if (API_KEY == null || API_KEY.isBlank()) {
         System.out.println("No key");
         return fallbackResponse(userInput);
       }
         String context = "KNOWN_FILES: " + knownFiles
-          + "\nKNOWN_APPS: " + knownApps;
+          + "\nKNOWN_APPS: " + knownApps + "\n" + memory.toPromptContext();
 
         JsonObject payload = new JsonObject();
         payload.addProperty("model", "llama-3.3-70b-versatile");

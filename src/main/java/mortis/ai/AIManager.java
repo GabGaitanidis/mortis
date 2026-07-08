@@ -13,7 +13,7 @@ public class AIManager {
         this.ttsBridge = ttsBridge;
     }
 
-    public String getData() throws FileNotFoundException, Exception {
+    public String getData(ActivityMemory memory) throws FileNotFoundException, Exception {
         List<String> knownFiles = List.of("google.txt", "report.docx", "notes.md");
         List<String> knownApps = List.of("discord");
 
@@ -26,7 +26,7 @@ public class AIManager {
             return null;
         }
 
-        return this.client.ask(transcript, knownFiles, knownApps);
+        return this.client.ask(transcript, knownFiles, knownApps, memory);
     }
 
 
