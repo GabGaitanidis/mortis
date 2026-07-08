@@ -29,6 +29,8 @@ def speak(text):
     subprocess.run(["paplay", AUDIO_PATH])
 
 def main():
+    print("READY", flush=True)  # <-- added
+
     for line in sys.stdin:
         text = line.strip()
         if not text:
@@ -40,7 +42,10 @@ def main():
             speak(text)
             print("DONE", flush=True)
         except Exception as e:
-            print(f"ERROR: {e}", flush=True)
+            print(f"ERROR: {e}".replace("\n", " "), flush=True) 
+
+    if os.path.exists(AUDIO_PATH):
+        os.remove(AUDIO_PATH)  
 
 if __name__ == "__main__":
     main()

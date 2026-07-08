@@ -7,20 +7,22 @@ import mortis.modules.browser.*;
 import mortis.modules.file.*;
 import mortis.modules.question.QuestionModule;
 import mortis.modules.unknown.UnKnownModule;
+import mortis.speech.TtsBridge;
 public class CommandRouter {
     private Map<String, Module> modules =  new HashMap<>();
-
-    public CommandRouter() {
+    private TtsBridge ttsBridge;
+    public CommandRouter(TtsBridge ttsBridge) {
         modules.put("file", new FileModule());
         modules.put("browser", new BroswerModule());
         modules.put("question", new QuestionModule());
         modules.put("unknown", new UnKnownModule());
+        this.ttsBridge = ttsBridge;
     }
 
     public void Route(Command command) throws IOException, URISyntaxException {
         Module module = modules.get(command.getModule());
         if (module != null) {
-            module.execute(command);
+            module.execute(command, ttsBridge);
         } else {
             System.out.println("unknown module");
         }

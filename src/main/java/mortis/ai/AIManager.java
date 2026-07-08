@@ -6,11 +6,13 @@ import mortis.speech.*;
 public class AIManager {
     private GroqClient client;
     private SttBridge sttBridge;
+    private TtsBridge ttsBridge;
     private HashMap<String, String> recent;
 
-    public AIManager() {
+    public AIManager(SttBridge sttBridge, TtsBridge ttsBridge) {
         this.client = new GroqClient();
-        this.sttBridge = new SttBridge();
+        this.sttBridge = sttBridge;
+        this.ttsBridge = ttsBridge;
         this.recent = new HashMap<>();
     }
 
@@ -23,6 +25,7 @@ public class AIManager {
 
         if (transcript == null || transcript.isBlank() || transcript.equals("no input")) {
             System.out.println("No input detected, ending session.");
+            ttsBridge.speak("Call me again if you need anything");
             return null;
         }
 

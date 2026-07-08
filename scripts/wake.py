@@ -5,8 +5,8 @@ import sounddevice as sd
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
-def wait_for_wake_word():
-    model = Model()
+def wait_for_wake_word(model):
+    model.reset()
     samplerate = 16000
     blocksize = 4000
     detected = False
@@ -29,7 +29,17 @@ def wait_for_wake_word():
         pass
     sd.stop()
 
+def main():
+    model = Model() 
+    print("READY", flush=True)
+
+    for line in sys.stdin:
+        cmd = line.strip()
+        if cmd == "__EXIT__":
+            break
+        if cmd == "listen":
+            wait_for_wake_word(model)
+            print("detected", flush=True)
+
 if __name__ == "__main__":
-    wait_for_wake_word()
-    print("detected", flush=True)
-    sys.exit(0)
+    main()

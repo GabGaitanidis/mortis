@@ -1,8 +1,6 @@
 package mortis;
 
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
-import java.io.InputStreamReader;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,28 +10,38 @@ import mortis.ai.AIManager;
 import mortis.core.Command;
 import mortis.core.CommandRouter;
 import mortis.core.ConvertToJson;
+import mortis.speech.SttBridge;
 import mortis.speech.TtsBridge;
-import mortis.utils.WaitWakeWord;
+import mortis.speech.WaitWakeWord;
 
 public class Mortis {
     public static void main(String[] args) throws FileNotFoundException, Exception {
-        WaitWakeWord wakeWord = new WaitWakeWord();
+        WaitWakeWord waitWake = new WaitWakeWord();
+        waitWake.start();
         TtsBridge ttsBridge = new TtsBridge();
-        AIManager manager = new AIManager();
-        CommandRouter router = new CommandRouter();
+        ttsBridge.start();
+        SttBridge sttBridge = new SttBridge();
+        AIManager manager = new AIManager(sttBridge, ttsBridge);
+        CommandRouter router = new CommandRouter(ttsBridge);
         ObjectMapper mapper = new ObjectMapper();
-        
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("shutdown");
+            try { waitWake.shutdown(); } catch (Exception e) { System.err.println("wake shutdown failed: " + e.getMessage()); }
+            try { ttsBridge.shutdown(); } catch (Exception e) { System.err.println("tts shutdown failed: " + e.getMessage()); }
+            try { sttBridge.shutdown(); } catch (Exception e) { System.err.println("stt shutdown failed: " + e.getMessage()); }
+        }));
+
         
         while (true) {
             System.out.println("Waiting for wake word...");
-            wakeWord.waitForWakeWord();
+            waitWake.waitForWakeWord();
 
-            ttsBridge.speakOnce("Hello sir! I'm listening");
-            start(manager, router, mapper);
+            ttsBridge.speak("Hello sir! I'm listening");
+            start(manager, router, mapper, ttsBridge);
         }
     }
 
-    private static void start(AIManager manager, CommandRouter router, ObjectMapper mapper) throws Exception {
+    private static void start(AIManager manager, CommandRouter router, ObjectMapper mapper, TtsBridge ttsBridge) throws Exception {
         String data = manager.getData();
 
         while (data != null) {
@@ -50,9 +58,9 @@ public class Mortis {
                 try {
                     handleItem(jsonData, router, manager, mapper);
                 } catch (Exception e) {
-                    TtsBridge ttsBridge = new TtsBridge();
+                    
                     System.err.println("Command failed: " + e.getMessage());
-                    ttsBridge.speakOnce("Sorry, something went wrong with that.");
+                    ttsBridge.speak("Sorry, something went wrong with that.");
                 }
             }
             data = manager.getData();

@@ -9,7 +9,7 @@ import mortis.core.*;
 import mortis.speech.TtsBridge;
 public class BroswerModule implements Module{
      @Override
-     public void execute(Command command) throws IOException, URISyntaxException {
+     public void execute(Command command, TtsBridge ttsBridge) throws IOException, URISyntaxException {
         BrowserHandler handler = new BrowserHandler((String) command.get("url"));
 
         switch (command.getAction()) {
@@ -20,9 +20,9 @@ public class BroswerModule implements Module{
                     if (host.startsWith("www.")) host = host.substring(4);
                     int dot = host.lastIndexOf('.');
                     if (dot > 0) host = host.substring(0, dot);
-                    speak("Opening " + host);
+                    speak("Opening " + host, ttsBridge);
                 } catch (Exception e) {
-                    speak("I cannot open that URL");
+                    speak("I cannot open that URL", ttsBridge);
                 }
                 break;
         

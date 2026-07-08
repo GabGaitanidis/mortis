@@ -5,10 +5,10 @@ import java.net.URISyntaxException;
 import mortis.speech.TtsBridge;
 
 public interface Module  {
-    void execute(Command command) throws IOException, URISyntaxException;
-    default void speak(String text) {
+    void execute(Command command, TtsBridge ttsBridge) throws IOException, URISyntaxException;
+    default void speak(String text, TtsBridge ttsBridge) {
         try {
-            new TtsBridge().speakOnce(text);
+            ttsBridge.speak(text);
         } catch (Exception e) {
             e.printStackTrace();
         }

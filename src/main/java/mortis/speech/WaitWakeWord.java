@@ -9,16 +9,17 @@ import java.nio.file.Path;
 
 import mortis.utils.Env;
 
-public class TtsBridge implements Speech {
+public class WaitWakeWord implements Speech {
     private Process process;
     private BufferedWriter writer;
     private BufferedReader reader;
 
     public void start() throws IOException {
-        String pythonExecutable = Env.get("MORTIS_PYTHON_EXECUTABLE", "python3");
-        String script = Env.get("MORTIS_TTS_SCRIPT", Path.of(System.getProperty("user.dir"), "scripts", "tts.py").toString());
+        String executable = Env.get("MORTIS_PYTHON_EXECUTABLE", "python3");
+        String script = Env.get("MORTIS_WAKE_SCRIPT",
+                Path.of(System.getProperty("user.dir"), "scripts", "wake.py").toString());
 
-        ProcessBuilder pb = new ProcessBuilder(pythonExecutable, "-u", script);
+        ProcessBuilder pb = new ProcessBuilder(executable, "-u", script);
         pb.redirectErrorStream(false);
         this.process = pb.start();
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
@@ -26,26 +27,24 @@ public class TtsBridge implements Speech {
 
         String ready = reader.readLine();
         if (ready == null || !ready.equals("READY")) {
-            throw new IOException("TTS process did not start correctly, got: " + ready);
+            throw new IOException("Wake word process did not start correctly, got: " + ready);
         }
     }
 
-    public void speak(String text) throws IOException {
-        String sanitized = text.replace("\n", " ").replace("\r", " ");
-        writer.write(sanitized);
-        writer.newLine();
+    public void waitForWakeWord() throws IOException {
+        writer.write("listen\n");
         writer.flush();
 
         String line = reader.readLine();
         if (line == null) {
-            throw new IOException("TTS process closed the pipe unexpectedly");
+            throw new IOException("Wake word process closed the pipe unexpectedly");
         }
-        if (line.startsWith("ERROR:")) {
-            throw new IOException("TTS error: " + line.substring(6));
+        if (!line.equals("detected")) {
+            throw new IOException("Unexpected wake word response: " + line);
         }
     }
 
-   @Override
+    @Override
     public void shutdown() throws IOException {
             if (writer != null) {
                 writer.write("__EXIT__");

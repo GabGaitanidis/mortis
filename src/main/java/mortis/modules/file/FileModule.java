@@ -10,7 +10,7 @@ import mortis.speech.TtsBridge;
 public class FileModule implements Module{
 
     @Override
-    public void execute(Command command) throws IOException {
+    public void execute(Command command, TtsBridge ttsBridge) throws IOException {
         Object path = command.get("path");
         if (path == "") {
             path = "Desktop";
@@ -21,36 +21,36 @@ public class FileModule implements Module{
             case "create":
                 try {
                     handler.createFile();
-                    speak("File created");
+                    speak("File created", ttsBridge);
                 } catch(IOException e ) {
-                    speak("I cannot create the file");
+                    speak("I cannot create the file", ttsBridge);
                 }
                 break;
             case "read":
                 try {
                     String content = handler.readFile();
                     System.out.println(content);
-                    speak("File contents: " + content);
+                    speak("File contents: " + content, ttsBridge );
                 } catch (Exception e) {
-                    speak("I cannot read the file");
+                    speak("I cannot read the file", ttsBridge);
                 }
                 break;
 
             case "write":
                 try {
                     handler.writeFile((String) command.get("content"));
-                    speak("File written successfully");
+                    speak("File written successfully", ttsBridge);
                 } catch (Exception e) {
-                    speak("I cannot write to the file");
+                    speak("I cannot write to the file", ttsBridge);
                 }
                 break;
 
             case "delete":
                 try {
                     handler.deleteFile();
-                    speak("File deleted successfully");
+                    speak("File deleted successfully", ttsBridge);
                 } catch (Exception e) {
-                    speak("I cannot delete the file");
+                    speak("I cannot delete the file", ttsBridge);
                 }
                 break;
         }

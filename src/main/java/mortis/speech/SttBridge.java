@@ -9,7 +9,7 @@ import java.nio.file.Path;
 
 import mortis.utils.Env;
 
-public class SttBridge {
+public class SttBridge implements Speech {
     private Process process;
     private BufferedWriter writer;
     private BufferedReader reader;
@@ -44,19 +44,26 @@ public class SttBridge {
         return line;
     }
 
+    @Override
     public void shutdown() throws IOException {
-        if (writer != null) {
-            writer.write("__EXIT__");
-            writer.newLine();
-            writer.flush();
-            writer.close();
-        }
-        if (reader != null) {
-            reader.close();
-        }
-        if (process != null) {
-            process.destroy();
-        }
+            if (writer != null) {
+                writer.write("__EXIT__");
+                writer.newLine();
+                writer.flush();
+                writer.close();
+            }
+            if (reader != null) reader.close();
+            if (process != null) {
+                try {
+                    boolean exited = process.waitFor(2, java.util.concurrent.TimeUnit.SECONDS);
+                    if (!exited) {
+                        process.destroyForcibly();
+                    }
+                } catch (InterruptedException e) {
+                    process.destroyForcibly();
+                }
+            }
+    
     }
 
     public String listenOnce() throws IOException {
