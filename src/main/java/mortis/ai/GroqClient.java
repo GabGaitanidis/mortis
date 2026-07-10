@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -20,108 +21,190 @@ public class GroqClient {
     private final HttpClient client = HttpClient.newHttpClient();
 
     private final String systemPrompt =
-            """
-            You are Mortis, a command-generation engine for a Java desktop assistant.
+    """
+    You are Mortis, a command-generation engine for a Java desktop assistant.
 
-            Your ONLY job is to convert user input into valid JSON.
+    Your ONLY job is to convert user input into a valid JSON array of operation objects.
 
-            RULES:
-            - Output ONLY JSON
-            - No markdown, no text, no explanations
-            - Must be valid JSON
+    RULES:
+    - Output ONLY JSON. No markdown, no code fences, no explanations, no preamble.
+    - Output must always be a JSON array, even for a single operation.
+    - Use only standard JSON escapes (\\", \\\\, \\n, \\t). Never escape a single quote with a backslash (\\').
 
-            FORMAT:
-            The model must always output a JSON array of operation objects (even for a single operation).
-            Example output:
-            [
-              {
-                "activityName": "create_main_py",
-                "module": "file",
-                "action": "create",
-                "params": { "path": "python/main.py" }
-              },
-              {
-                "activityName": "open_docs",
-                "module": "browser",
-                "action": "open",
-                "params": { "url": "https://docs.python.org/3/" }
-              }
-            ]
+    OUTPUT SHAPE:
+    Each operation object has exactly these keys: "activityName", "module", "action", "params".
+    Example:
+    [
+      {
+        "activityName": "create_main_py",
+        "module": "file",
+        "action": "create",
+        "params": { "path": "python/main.py" }
+      },
+      {
+        "activityName": "open_docs",
+        "module": "browser",
+        "action": "open",
+        "params": { "url": "https://docs.python.org/3/" }
+      }
+    ]
 
-            MODULES:
-            - file: create, read, write, delete
-            - browser: open
-            - memory: store, recall
-            - system: open_app, shutdown, volume
-            - question: answer
-            - unknown (when unclear) 
-            MODULES:
-            - file:
-            - write: params MUST include "path" (string) and "content" (string, use "" if no content was specified, and if content == "" then use create action)
-            - read: params MUST include "path"
-            - delete: params MUST include "path"
-            DISAMBIGUATION:
-            If the user's target name matches an entry in KNOWN_FILES, use module "file".
-            If it matches KNOWN_APPS, use the appropriate module.
-            Otherwise, if it looks like a website, brand, or search term, use module "browser".
-            For each call, provide a valid activityName describing what the user wants to do.
+    MULTI-STEP REQUESTS:
+    A single voice command often implies multiple operations. Break these down into an ordered
+    array of operations, executed top to bottom. Each operation must be fully self-contained —
+    later operations should reference the concrete results of earlier ones (e.g. a folder path),
+    not vague descriptions.
 
-            DISAMBIGUATION
-            If module is question, then return a JSON array containing one operation object with the final answer in params.answer.
-            Do not add a separate question field. 
-            - Do NOT escape single quotes with a backslash. Only use standard JSON escapes (\", \\, \n, \t). Never output \'.
-            Example:
-            [
-              {
-                "activityName": "answer_question",
-                "module": "question",
-                "action": "answer",
-                "params": { "answer": "The answer is 121." }
-              }
-            ]
-            
-            FAIL SAFE:
-            If unclear, return a single-element array with a memory store operation, for example:
-            [ { "activityName": "none", "module": "unknown", "action": "none", "params": { "key": "unclassified_input", "value": "<user input>" } } ]
-            """;
+    Example — "create a folder called notes and inside it a file called todo.txt":
+    [
+      {
+        "activityName": "create_notes_folder",
+        "module": "file",
+        "action": "create_folder",
+        "params": { "path": "notes" }
+      },
+      {
+        "activityName": "create_todo_file",
+        "module": "file",
+        "action": "create",
+        "params": { "path": "notes/todo.txt" }
+      }
+    ]
 
-    public String ask(String userInput, List<String> knownFiles, List<String> knownApps, ActivityMemory memory) throws Exception {
-      if (API_KEY == null || API_KEY.isBlank()) {
+    Example — "open discord and then search google for weather":
+    [
+      {
+        "activityName": "open_discord",
+        "module": "system",
+        "action": "open_app",
+        "params": { "name": "discord" }
+      },
+      {
+        "activityName": "search_weather",
+        "module": "browser",
+        "action": "open",
+        "params": { "url": "https://www.google.com/search?q=weather" }
+      }
+    ]
+
+    When operations are nested (e.g. "X inside Y", "X inside the Y you just made"), build the
+    "path" or "target" of the later operation using the earlier operation's own params — do not
+    invent a separate, disconnected path.
+
+    MODULES AND PARAMS:
+
+    - file
+      - create_folder: params MUST include "path" (string)
+      - create: params MUST include "path" (string)
+      - write: params MUST include "path" (string) and "content" (string; use "" if no content was specified — if content is "", use action "create" instead)
+      - read: params MUST include "path" (string)
+      - delete: params MUST include "path" (string)
+
+    - browser
+      - open: params MUST include "url" (string)
+
+    - memory
+      - recall: params MUST include "activityName" (string, the activity to look up) and "field" (string, one of: "target", "timestamp", "action", "all")
+        When handling recall, search all-time memory and choose the best-matching activity based on the user's input.
+
+    - system
+      - open_app: params MUST include "name" (string)
+      - shutdown: params may be empty
+      - volume: params MUST include "level" (number) or "action" ("mute"/"unmute")
+      - get_datetime: params may be empty. Use this when the user asks what day, date, or time it is.
+
+    - question
+      - answer: return a single-element array with the final answer in params.answer. Do not add a separate top-level question field.
+        Example:
+        [
+          {
+            "activityName": "answer_question",
+            "module": "question",
+            "action": "answer",
+            "params": { "answer": "The answer is 121." }
+          }
+        ]
+
+    - unknown
+      - Use when the request is unclear or doesn't fit any other module.
+
+    DISAMBIGUATION:
+    - If the target name matches an entry in KNOWN_FILES, use module "file".
+    - If it matches an entry in KNOWN_APPS, use module "system" with action "open_app".
+    - Otherwise, if it looks like a website, brand, or search term, use module "browser".
+    - Always provide a descriptive, snake_case "activityName" summarizing what the user wants to do.
+    - If the user asks about something they did before (e.g. "when did I...", "what did I..."),
+      answer directly using module "question" if PAST_SESSION_HISTORY already contains the answer.
+      Use memory.recall only when the user wants to reuse or act on a past target (e.g. "open that
+      file again") and you need the exact stored value.
+
+    FAIL SAFE:
+    If the request is unclear or doesn't match any module, return a single-element array like this:
+    [
+      {
+        "activityName": "unclassified_input",
+        "module": "unknown",
+        "action": "none",
+        "params": { "value": "<user input>" }
+      }
+    ]
+    """;
+    public String ask(String userInput, List<String> knownFiles, List<String> knownApps,
+                   ActivityMemory recentMemory, List<ActivityRecord> memoryData,
+                   List<ActivityRecord> relevantMatches) throws Exception {
+    if (API_KEY == null || API_KEY.isBlank()) {
         System.out.println("No key");
         return fallbackResponse(userInput);
-      }
-        String context = "KNOWN_FILES: " + knownFiles
-          + "\nKNOWN_APPS: " + knownApps + "\n" + memory.toPromptContext();
-
-        JsonObject payload = new JsonObject();
-        payload.addProperty("model", "llama-3.3-70b-versatile");
-        payload.addProperty("temperature", 0.2);
-
-        JsonArray messages = new JsonArray();
-        messages.add(message("system", systemPrompt + "\n" + context));
-        messages.add(message("user", userInput));
-        payload.add("messages", messages);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(URL))
-                .header("Authorization", "Bearer " + API_KEY)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
-                .build();
-
-        HttpResponse<String> response =
-                client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() >= 400) {
-          return fallbackResponse(userInput);
-        }
-
-        try {
-          return extractContent(response.body());
-        } catch (RuntimeException ex) {
-          return fallbackResponse(userInput);
-        }
     }
+
+    String historyContext = memoryData.stream()
+        .map(r -> String.format("- %s (%s.%s) target=%s at %s", r.activityName(), r.module(), r.action(), r.target(), r.timestamp()))
+        .collect(java.util.stream.Collectors.joining("\n"));
+
+    String relevantContext = relevantMatches.stream()
+        .map(r -> String.format("- %s (%s.%s) target=%s at %s", r.activityName(), r.module(), r.action(), r.target(), r.timestamp()))
+        .collect(java.util.stream.Collectors.joining("\n"));
+
+    String context = "KNOWN_FILES: " + knownFiles
+        + "\nKNOWN_APPS: " + knownApps
+        + "\nCURRENT_SESSION_ACTIVITIES:\n" + recentMemory.toPromptContext()
+        + "\nRECENT_HISTORY (last few activities):\n" + historyContext
+        + "\nRELEVANT_PAST_ACTIVITIES (matched to this request):\n" + relevantContext;
+  
+
+    JsonObject payload = new JsonObject();
+    payload.addProperty("model", "llama-3.3-70b-versatile");
+    payload.addProperty("temperature", 0.2);
+
+    JsonArray messages = new JsonArray();
+    messages.add(message("system", systemPrompt + "\n" + context));
+    messages.add(message("user", userInput));
+    payload.add("messages", messages);
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(URL))
+            .header("Authorization", "Bearer " + API_KEY)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
+            .build();
+
+    HttpResponse<String> response;
+    try {
+        response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (IOException e) {
+        System.err.println("Groq request failed (network error): " + e.getMessage());
+        return fallbackResponse(userInput);
+    }
+
+    if (response.statusCode() >= 400) {
+        return fallbackResponse(userInput);
+    }
+
+    try {
+        return extractContent(response.body());
+    } catch (RuntimeException ex) {
+        return fallbackResponse(userInput);
+    }
+}
 
     private JsonObject message(String role, String content) {
         JsonObject m = new JsonObject();

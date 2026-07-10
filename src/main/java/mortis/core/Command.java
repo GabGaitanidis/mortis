@@ -22,7 +22,9 @@ public class Command {
     public String getAction() {
         return action;
     }
-
+    public Map<String, Object> getParams() {
+        return params;
+    }
     public Object get(String key) {
         return params.get(key);
     }

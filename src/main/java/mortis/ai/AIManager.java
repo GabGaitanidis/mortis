@@ -13,7 +13,7 @@ public class AIManager {
         this.ttsBridge = ttsBridge;
     }
 
-    public String getData(ActivityMemory memory) throws FileNotFoundException, Exception {
+    public String getData(ActivityMemory recentMemory, List<ActivityRecord> memoryData, Memory memory) throws FileNotFoundException, Exception {
         List<String> knownFiles = List.of("google.txt", "report.docx", "notes.md");
         List<String> knownApps = List.of("discord");
 
@@ -22,11 +22,15 @@ public class AIManager {
 
         if (transcript == null || transcript.isBlank() || transcript.equals("no input")) {
             System.out.println("No input detected, ending session.");
-            ttsBridge.speak("Call me again if you need anything");
+            try {
+                ttsBridge.speak("Call me again if you need anything");
+            } catch (Exception e) {
+            }
             return null;
         }
+        List<ActivityRecord> relevantMatches = memory.searchRelevant(transcript, 5); 
 
-        return this.client.ask(transcript, knownFiles, knownApps, memory);
+        return this.client.ask(transcript, knownFiles, knownApps, recentMemory, memoryData, relevantMatches);
     }
 
 

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import mortis.modules.browser.*;
 import mortis.modules.file.*;
+import mortis.modules.memory.MemoryModule;
 import mortis.modules.question.QuestionModule;
 import mortis.modules.unknown.UnKnownModule;
 import mortis.speech.TtsBridge;
@@ -16,6 +17,7 @@ public class CommandRouter {
         modules.put("browser", new BroswerModule());
         modules.put("question", new QuestionModule());
         modules.put("unknown", new UnKnownModule());
+        modules.put("memory", new MemoryModule());
         this.ttsBridge = ttsBridge;
     }
 
