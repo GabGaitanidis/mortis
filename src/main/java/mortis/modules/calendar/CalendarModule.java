@@ -2,6 +2,7 @@ package mortis.modules.calendar;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.google.api.services.calendar.model.Event;
@@ -38,7 +39,14 @@ public class CalendarModule implements Module {
                     speak("I couldn't reach your calendar.", ttsBridge);
                 }
                 break;
-
+            case "create_event":
+                try {
+                    Event event = handler.createEvent(command.get("summary").toString(), parseDateTime(command.get("start")), parseDateTime(command.get("end")));
+                    speak("I will add this to your calendar with the summary: "  + event.getSummary(), ttsBridge);
+                } catch (Exception e) {
+                    System.out.println(e.getMessage());
+                    speak("I cant add this to your calendar", ttsBridge);
+                }
             default:
                 speak("I don't know how to do that with your calendar.", ttsBridge);
                 break;
@@ -52,13 +60,33 @@ public class CalendarModule implements Module {
 
         StringBuilder response = new StringBuilder("Here's what you have today: ");
         for (Event event : events) {
-            String time = event.getStart().getDateTime() != null
-                    ? event.getStart().getDateTime().toString()
-                    : "all day";
+            String time = formatEventTime(event);
             response.append(event.getSummary()).append(" at ").append(time).append(". ");
         }
         return response.toString();
     }
 
-   
+    private String formatEventTime(Event event) {
+        if (event.getStart().getDateTime() == null) {
+            return "all day";
+        }
+
+        long millis = event.getStart().getDateTime().getValue();
+        java.time.Instant instant = java.time.Instant.ofEpochMilli(millis);
+        java.time.ZonedDateTime zoned = instant.atZone(java.time.ZoneId.systemDefault());
+
+        return java.time.format.DateTimeFormatter.ofPattern("h:mm a").format(zoned);
+    }
+
+   private LocalDateTime parseDateTime(Object value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Missing datetime value");
+        }
+        String str = value.toString().trim();
+        try {
+            return LocalDateTime.parse(str);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new IllegalArgumentException("Invalid datetime format: " + str, e);
+        }
+    }
 }

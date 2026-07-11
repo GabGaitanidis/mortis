@@ -14,15 +14,18 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
 
 import mortis.utils.Env;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -35,8 +38,7 @@ public class CalendarHandler {
         "GOOGLE_TOKENS_PATH",System.getProperty("user.home") + "/.mortis/tokens");
     private static final String CREDENTIALS_FILE_PATH = Env.get(
         "CREDENTIALS_FILE_PATH", "/home/gabz/Desktop/projects/mortis/files/credentials.json");
-    private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR_READONLY);
-
+    private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR);
     private final Calendar service;
 
     public CalendarHandler() throws Exception {
@@ -74,5 +76,19 @@ public class CalendarHandler {
                 .execute();
 
         return events.getItems();
+    }
+
+    public Event createEvent(String title, LocalDateTime start, LocalDateTime end) throws IOException {
+        ZoneId zone = ZoneId.systemDefault();
+        Event event = new Event().setSummary(title);
+        DateTime starDateTime = new DateTime(start.atZone(zone).toInstant().toEpochMilli());
+        EventDateTime eventStarTime = new EventDateTime().setDateTime(starDateTime).setTimeZone(zone.getId());
+        event.setStart(eventStarTime);
+
+        DateTime endDateTime = new DateTime(end.atZone(zone).toInstant().toEpochMilli());
+        EventDateTime eventEndTime = new EventDateTime().setDateTime(endDateTime).setTimeZone(zone.getId());
+        event.setEnd(eventEndTime);
+
+        return service.events().insert("primary", event).execute();
     }
 }

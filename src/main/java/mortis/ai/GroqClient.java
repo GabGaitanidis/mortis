@@ -93,27 +93,27 @@ public class GroqClient {
 
     MODULES AND PARAMS:
 
-    - file
+    - file:
       - create_folder: params MUST include "path" (string)
       - create: params MUST include "path" (string)
       - write: params MUST include "path" (string) and "content" (string; use "" if no content was specified — if content is "", use action "create" instead)
       - read: params MUST include "path" (string)
       - delete: params MUST include "path" (string)
 
-    - browser
+    - browser:
       - open: params MUST include "url" (string)
 
-    - memory
+    - memory:
       - recall: params MUST include "activityName" (string, the activity to look up) and "field" (string, one of: "target", "timestamp", "action", "all")
         When handling recall, search all-time memory and choose the best-matching activity based on the user's input.
 
-    - system
+    - system:
       - open_app: params MUST include "name" (string)
       - shutdown: params may be empty
       - volume: params MUST include "level" (number) or "action" ("mute"/"unmute")
       - get_datetime: params may be empty. Use this when the user asks what day, date, or time it is.
 
-    - question
+    - question:
       - answer: return a single-element array with the final answer in params.answer. Do not add a separate top-level question field.
         Example:
         [
@@ -124,9 +124,16 @@ public class GroqClient {
             "params": { "answer": "The answer is 121." }
           }
         ]
-    - calendar
-      - get_today_events: params may be empty
-    - unknown
+- calendar
+  - get_today_events: params may be empty. Use this when the user asks what's on their schedule/calendar today.
+  - create_event: params MUST include:
+    - "summary" (string): a short title for the event
+    - "start" (string): exact ISO-8601 local datetime, format "yyyy-MM-ddTHH:mm:ss" — e.g. "2026-07-11T15:30:00"
+    - "end" (string): same format as "start"
+    Do NOT include a timezone offset or the letter "Z" — local time only, no suffix.
+    Use CURRENT_DATETIME (provided in context) to resolve relative dates/times like "today", "tomorrow",
+    "in an hour", or a bare time with no date.
+    If no duration or end time is given, set "end" to "start" plus 1 hour.
       - Use when the request is unclear or doesn't fit any other module.
 
     DISAMBIGUATION:
@@ -166,11 +173,14 @@ public class GroqClient {
         .map(r -> String.format("- %s (%s.%s) target=%s at %s", r.activityName(), r.module(), r.action(), r.target(), r.timestamp()))
         .collect(java.util.stream.Collectors.joining("\n"));
 
+    String currentDateTime = java.time.LocalDateTime.now().toString();
+
     String context = "KNOWN_FILES: " + knownFiles
         + "\nKNOWN_APPS: " + knownApps
+        + "\nCURRENT_DATETIME: " + currentDateTime
         + "\nCURRENT_SESSION_ACTIVITIES:\n" + recentMemory.toPromptContext()
-        + "\nRECENT_HISTORY (last few activities):\n" + historyContext
-        + "\nRELEVANT_PAST_ACTIVITIES (matched to this request):\n" + relevantContext;
+        + "\nRECENT_HISTORY:\n" + historyContext
+        + "\nRELEVANT_PAST_ACTIVITIES:\n" + relevantContext;
   
 
     JsonObject payload = new JsonObject();
