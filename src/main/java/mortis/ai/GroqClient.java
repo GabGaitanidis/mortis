@@ -124,7 +124,8 @@ public class GroqClient {
             "params": { "answer": "The answer is 121." }
           }
         ]
-
+    - calendar
+      - get_today_events: params may be empty
     - unknown
       - Use when the request is unclear or doesn't fit any other module.
 

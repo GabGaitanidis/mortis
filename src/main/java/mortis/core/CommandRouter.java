@@ -4,6 +4,7 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import mortis.modules.browser.*;
+import mortis.modules.calendar.CalendarModule;
 import mortis.modules.file.*;
 import mortis.modules.memory.MemoryModule;
 import mortis.modules.question.QuestionModule;
@@ -18,6 +19,7 @@ public class CommandRouter {
         modules.put("question", new QuestionModule());
         modules.put("unknown", new UnKnownModule());
         modules.put("memory", new MemoryModule());
+        modules.put("calendar", new CalendarModule());
         this.ttsBridge = ttsBridge;
     }
 
