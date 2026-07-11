@@ -33,5 +33,21 @@ public class AIManager {
         return this.client.ask(transcript, knownFiles, knownApps, recentMemory, memoryData, relevantMatches);
     }
 
+    public String getData(ActivityMemory recentMemory, List<ActivityRecord> memoryData, Memory memory, String transcript) throws Exception {
+        List<String> knownFiles = List.of("google.txt", "report.docx", "notes.md");
+        List<String> knownApps = List.of("discord");
+        System.out.println("transcript: " + transcript);
 
+        if (transcript == null || transcript.isBlank() || transcript.equals("no input")) {
+            System.out.println("No input detected, ending session.");
+            try {
+                ttsBridge.speak("Call me again if you need anything");
+            } catch (Exception e) {
+            }
+            return null;
+        }
+        List<ActivityRecord> relevantMatches = memory.searchRelevant(transcript, 5); 
+
+        return this.client.ask(transcript, knownFiles, knownApps, recentMemory, memoryData, relevantMatches);
+    }
 }

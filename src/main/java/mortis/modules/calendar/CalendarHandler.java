@@ -32,9 +32,9 @@ public class CalendarHandler {
     private static final String APPLICATION_NAME = "Mortis Calendar";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = Env.get(
-        "GOOGLE_TOKENS_PATH",null);
+        "GOOGLE_TOKENS_PATH",System.getProperty("user.home") + "/.mortis/tokens");
     private static final String CREDENTIALS_FILE_PATH = Env.get(
-        "CREDENTIALS_FILE_PATH", null);
+        "CREDENTIALS_FILE_PATH", "/home/gabz/Desktop/projects/mortis/files/credentials.json");
     private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR_READONLY);
 
     private final Calendar service;
