@@ -27,6 +27,7 @@ public class WaitWakeWord implements Speech {
 
         String ready = reader.readLine();
         if (ready == null || !ready.equals("READY")) {
+            System.out.println(ready);
             throw new IOException("Wake word process did not start correctly, got: " + ready);
         }
     }
