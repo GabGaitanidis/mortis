@@ -221,32 +221,20 @@ DISAMBIGUATION (facts about the user):
     messages.add(message("system", systemPrompt + "\n" + context));
     messages.add(message("user", userInput));
     payload.add("messages", messages);
-    HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(URL))
-            .header("Authorization", "Bearer " + API_KEY)
-            .timeout(Duration.ofSeconds(30))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
-            .build();
+    
 
-    HttpResponse<String> response;
+    HttpResponse<String> response = null;
+    
     try {
-System.out.println("Before send");
-long start = System.currentTimeMillis();
-
-response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-System.out.println("After send: " + (System.currentTimeMillis() - start));
+      response = sendRequest(payload, 0);
+    
     } catch (IOException e) {
         System.err.println("Groq request failed (network error): " + e.getMessage());
         return fallbackResponse(userInput);
     }
 
-    if (response.statusCode() >= 400) {
-        System.out.println(response.statusCode());
-        return fallbackResponse(userInput);
-    }
-
+    
+    
     try {
         return extractContent(response.body());
     } catch (RuntimeException ex) {
@@ -275,6 +263,36 @@ System.out.println("After send: " + (System.currentTimeMillis() - start));
                 .getAsString();
         return result;
     }
+
+
+    private HttpResponse<String> sendRequest(JsonObject payload, int attemp) throws  InterruptedException, IOException {
+      if (attemp > 3) {
+        System.out.println("Groq network error");
+        return null;
+      }
+      HttpRequest request = HttpRequest.newBuilder()
+                  .uri(URI.create(URL))
+                  .header("Authorization", "Bearer " + API_KEY)
+                  .timeout(Duration.ofSeconds(30))
+                  .header("Content-Type", "application/json")
+                  .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
+                  .build();
+
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response != null && response.statusCode() == 429) {
+        System.out.println("rate limited");
+        return response;
+      }
+
+      if (response == null || response.statusCode() >= 400) {
+        System.out.println("reattempting");
+        return sendRequest(payload, attemp + 1);
+      }
+      return response;
+    }
+
+
 
     private String fallbackResponse(String userInput) {
       JsonObject root = new JsonObject();
