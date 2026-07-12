@@ -8,6 +8,7 @@ import mortis.modules.calendar.CalendarModule;
 import mortis.modules.file.*;
 import mortis.modules.memory.MemoryModule;
 import mortis.modules.question.QuestionModule;
+import mortis.modules.system.SystemModule;
 import mortis.modules.unknown.UnKnownModule;
 import mortis.modules.user.UserFactsModule;
 import mortis.speech.TtsBridge;
@@ -22,10 +23,11 @@ public class CommandRouter {
         modules.put("memory", new MemoryModule());
         modules.put("calendar", new CalendarModule());
         modules.put("user", new UserFactsModule());
+        modules.put("system", new SystemModule());
         this.ttsBridge = ttsBridge;
     }
 
-    public void Route(Command command) throws IOException, URISyntaxException {
+    public void Route(Command command) throws IOException, URISyntaxException, InterruptedException {
         Module module = modules.get(command.getModule());
         if (module != null) {
             module.execute(command, ttsBridge);

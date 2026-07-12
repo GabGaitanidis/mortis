@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 
 import mortis.modules.user.UserFactsHandler;
@@ -19,8 +20,10 @@ public class GroqClient {
     private static final String API_KEY = Env.get("GROQ_API_KEY", "");
     private static final String URL = "https://api.groq.com/openai/v1/chat/completions";
 
-    private final HttpClient client = HttpClient.newHttpClient();
-
+    private final HttpClient client = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
     private final String systemPrompt =
     """
     You are Mortis, a command-generation engine for a Java desktop assistant.
@@ -109,7 +112,8 @@ public class GroqClient {
         When handling recall, search all-time memory and choose the best-matching activity based on the user's input.
 
     - system:
-      - open_app: params MUST include "name" (string)
+      Im in linux give the right command to open an app or execute a command (check for known apps)
+      - open_app: params MUST include "command" (string)
       - shutdown: params may be empty
       - volume: params MUST include "level" (number) or "action" ("mute"/"unmute")
       - get_datetime: params may be empty. Use this when the user asks what day, date, or time it is.
@@ -189,7 +193,7 @@ DISAMBIGUATION (facts about the user):
         System.out.println("No key");
         return fallbackResponse(userInput);
     }
-
+    
     String historyContext = memoryData.stream()
         .map(r -> String.format("- %s (%s.%s) target=%s at %s", r.activityName(), r.module(), r.action(), r.target(), r.timestamp()))
         .collect(java.util.stream.Collectors.joining("\n"));
@@ -200,8 +204,8 @@ DISAMBIGUATION (facts about the user):
 
     String currentDateTime = java.time.LocalDateTime.now().toString();
     UserFactsHandler userFactsHandler = new UserFactsHandler();
-    String context = "KNOWN_FILES: " + knownFiles
-        + "\nKNOWN_APPS: " + knownApps
+    String context = 
+         "\nKNOWN_APPS: " + knownApps
         + "\nCURRENT_DATETIME: " + currentDateTime
         + "\nCURRENT_SESSION_ACTIVITIES:\n" + recentMemory.toPromptContext()
         + "\nRECENT_HISTORY:\n" + historyContext
@@ -220,25 +224,33 @@ DISAMBIGUATION (facts about the user):
     HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(URL))
             .header("Authorization", "Bearer " + API_KEY)
+            .timeout(Duration.ofSeconds(30))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
             .build();
 
     HttpResponse<String> response;
     try {
-        response = client.send(request, HttpResponse.BodyHandlers.ofString());
+System.out.println("Before send");
+long start = System.currentTimeMillis();
+
+response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+System.out.println("After send: " + (System.currentTimeMillis() - start));
     } catch (IOException e) {
         System.err.println("Groq request failed (network error): " + e.getMessage());
         return fallbackResponse(userInput);
     }
 
     if (response.statusCode() >= 400) {
+        System.out.println(response.statusCode());
         return fallbackResponse(userInput);
     }
 
     try {
         return extractContent(response.body());
     } catch (RuntimeException ex) {
+        System.out.println("error in ex");
         return fallbackResponse(userInput);
     }
 }

@@ -19,6 +19,7 @@ import mortis.core.ConvertToJson;
 import mortis.speech.SttBridge;
 import mortis.speech.TtsBridge;
 import mortis.speech.WaitWakeWord;
+import mortis.ui.TextModeWindow;
 
 public class Mortis {
     private static volatile boolean shuttingDown = false;
@@ -35,6 +36,19 @@ public class Mortis {
         ObjectMapper mapper = new ObjectMapper();
 
         if (args.length > 0 && args[0].equals("--text")) {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println("shutdown");
+                shuttingDown = true;
+                try { ttsBridge.shutdown(); } catch (Exception e) { System.err.println("tts shutdown failed: " + e.getMessage()); }
+                try { sttBridge.shutdown(); } catch (Exception e) { System.err.println("stt shutdown failed: " + e.getMessage()); }
+            }));
+            TextModeWindow.launchWindow(manager, router, mapper, ttsBridge, memoryData, memory);
+            return;
+        
+        }
+
+
+        if (args.length > 0 && args[0].equals("--textConsole")) {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 System.out.println("shutdown");
                 shuttingDown = true;
@@ -65,12 +79,11 @@ public class Mortis {
                 throw e;
             }
             if (shuttingDown) break;
-
-            ttsBridge.speak("Hello sir! What can I do for you?");
+            String[] welcomePhrases = {"Hello sir! What can I do for you?", "Hey! Any thoughts today?" , "Im listening sir!", "Always there"};
+            ttsBridge.speak(welcomePhrases[(int)(Math.random()) * 3]);
             runVoiceNode(manager, router, mapper, ttsBridge, memoryData, memory);
         }
     }
-
     private static void runVoiceNode(AIManager manager, CommandRouter router, ObjectMapper mapper, TtsBridge ttsBridge, List<ActivityRecord> memoryData, Memory memory) throws Exception {
         ActivityMemory recentMemory = new ActivityMemory();
         String data = manager.getData(recentMemory, memoryData, memory);
@@ -102,40 +115,50 @@ public class Mortis {
         }
     }
 
-    private static void runTextMode(AIManager manager, CommandRouter router, ObjectMapper mapper, TtsBridge ttsBridge, List<ActivityRecord> memoryData, Memory memory) throws Exception {
-        System.out.println("Text mode. Type your commands (type 'exit' to quit):");
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        ActivityMemory sessionMemory = new ActivityMemory();
+   private static void runTextMode(AIManager manager, CommandRouter router, ObjectMapper mapper,
+                                  TtsBridge ttsBridge, List<ActivityRecord> memoryData, Memory memory) throws Exception {
+    System.out.println("Text mode. Type your commands (type 'exit' to quit):");
+    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+    ActivityMemory sessionMemory = new ActivityMemory();
 
-        String line;
-        while ((line = reader.readLine()) != null) {
-            if (line.equalsIgnoreCase("exit")) break;
-            if (line.isBlank()) continue;
+    String line;
+    while ((line = reader.readLine()) != null) {
+        if (line.equalsIgnoreCase("exit")) break;
+        processTextInput(line, manager, router, mapper, sessionMemory, memoryData, memory);
+    }
+}
 
-            String data = manager.getData(sessionMemory, memoryData, memory, line);
-            if (data == null) continue;
 
-            JsonNode jsonData = ConvertToJson.convertToJson(data);
-            System.out.println(jsonData);
+    public static String processTextInput(String line, AIManager manager, CommandRouter router,
+                                            ObjectMapper mapper, ActivityMemory sessionMemory,
+                                            List<ActivityRecord> memoryData, Memory memory) throws Exception {
+        if (line == null || line.isBlank()) {
+            return null;
+        }
+        String data = manager.getData(sessionMemory, memoryData, memory, line);
+        if (data == null) return null;
 
-            if (jsonData.isArray()) {
-                for (JsonNode item : jsonData) {
-                    try {
-                        handleItem(item, router, manager, mapper, sessionMemory, memory);
-                    } catch (Exception e) {
-                        System.err.println("Command failed: " + e.getMessage());
-                    }
-                }
-            } else {
+        JsonNode jsonData = ConvertToJson.convertToJson(data);
+        System.out.println(jsonData);
+
+        if (jsonData.isArray()) {
+            for (JsonNode item : jsonData) {
                 try {
-                    handleItem(jsonData, router, manager, mapper, sessionMemory, memory);
+                    handleItem(item, router, manager, mapper, sessionMemory, memory);
                 } catch (Exception e) {
                     System.err.println("Command failed: " + e.getMessage());
                 }
             }
+        } else {
+            try {
+                handleItem(jsonData, router, manager, mapper, sessionMemory, memory);
+            } catch (Exception e) {
+                System.err.println("Command failed: " + e.getMessage());
+            }
         }
-    }
 
+        return jsonData.toString();
+    }
 
     private static void handleItem(JsonNode item, CommandRouter router, AIManager manager, ObjectMapper mapper, ActivityMemory recentMemory, Memory memory) throws Exception {
         Map<String, Object> paramsMap = mapper.convertValue(
