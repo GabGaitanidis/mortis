@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 
+import mortis.modules.user.UserFactsHandler;
 import mortis.utils.Env;
 
 public class GroqClient {
@@ -136,6 +137,27 @@ public class GroqClient {
     If no duration or end time is given, set "end" to "start" plus 1 hour.
       - Use when the request is unclear or doesn't fit any other module.
 
+    - user
+  - set_fact: params MUST include "key" (string, a short identifier like "name", "favorite_color", "birthday")
+    and "value" (string, the fact itself). Use this when the user tells you something about
+    themselves they want remembered (e.g. "my name is Gabriel", "remember that I like coffee").
+  - get_fact: params MUST include "key" (string). Use this for ANY question about the user
+    themselves (e.g. "what's my name", "what do I like", "when's my birthday"). Always use this
+    module for personal questions, even if the answer already appears in USER_FACTS — do not
+    answer personal questions using module "question".
+  - forget_fact: params MUST include "key" (string). Use this when the user asks you to forget
+    or stop remembering something specific about them.
+
+DISAMBIGUATION (facts about the user):
+- ANY question about the user themselves — their name, preferences, personal details, anything
+  phrased as "what's my...", "do I...", "what do I...", "who am I", etc. — MUST use module "user",
+  action "get_fact". Never use module "question" for questions about the user.
+- Use module "question" only for general knowledge, computation, or factual questions NOT about
+  the user (e.g. "what's 2 plus 2", "what's the capital of France").
+- Only use user.set_fact when the user is explicitly stating or correcting a fact about themselves.
+- Never invent or guess a fact. If asked about a fact not present in USER_FACTS, the get_fact
+  handler will report that it isn't known — do not fabricate an answer yourself.
+    
     DISAMBIGUATION:
     - If the target name matches an entry in KNOWN_FILES, use module "file".
     - If it matches an entry in KNOWN_APPS, use module "system" with action "open_app".
@@ -145,6 +167,9 @@ public class GroqClient {
       answer directly using module "question" if PAST_SESSION_HISTORY already contains the answer.
       Use memory.recall only when the user wants to reuse or act on a past target (e.g. "open that
       file again") and you need the exact stored value.
+    - If the input is clear of meaning but doesnt match anything (expect unknown) then default is memory
+    - In memory module give an more neutral name so when there is a question that isnt google searchable then go in memory 
+
 
     FAIL SAFE:
     If the request is unclear or doesn't match any module, return a single-element array like this:
@@ -174,13 +199,14 @@ public class GroqClient {
         .collect(java.util.stream.Collectors.joining("\n"));
 
     String currentDateTime = java.time.LocalDateTime.now().toString();
-
+    UserFactsHandler userFactsHandler = new UserFactsHandler();
     String context = "KNOWN_FILES: " + knownFiles
         + "\nKNOWN_APPS: " + knownApps
         + "\nCURRENT_DATETIME: " + currentDateTime
         + "\nCURRENT_SESSION_ACTIVITIES:\n" + recentMemory.toPromptContext()
         + "\nRECENT_HISTORY:\n" + historyContext
-        + "\nRELEVANT_PAST_ACTIVITIES:\n" + relevantContext;
+        + "\nRELEVANT_PAST_ACTIVITIES:\n" + relevantContext
+        + "\nUSER_FACTS:\n" + userFactsHandler.getKeysAString();
   
 
     JsonObject payload = new JsonObject();

@@ -47,9 +47,7 @@ public class CalendarModule implements Module {
                     System.out.println(e.getMessage());
                     speak("I cant add this to your calendar", ttsBridge);
                 }
-            default:
-                speak("I don't know how to do that with your calendar.", ttsBridge);
-                break;
+          
         }
     }
 
