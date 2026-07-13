@@ -29,7 +29,7 @@ def speak(text):
     subprocess.run(["paplay", AUDIO_PATH])
 
 def main():
-    print("READY", flush=True)  # <-- added
+    print("READY", flush=True)  
 
     for line in sys.stdin:
         text = line.strip()

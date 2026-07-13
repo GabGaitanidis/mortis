@@ -29,6 +29,7 @@ public class Mortis {
         TtsBridge ttsBridge = new TtsBridge();
         ttsBridge.start();
         SttBridge sttBridge = new SttBridge();
+        sttBridge.start();
         Memory memory = new Memory();
         List<ActivityRecord> memoryData = memory.getRecentRecords();
         AIManager manager = new AIManager(sttBridge, ttsBridge);
@@ -80,7 +81,7 @@ public class Mortis {
             }
             if (shuttingDown) break;
             String[] welcomePhrases = {"Hello sir! What can I do for you?", "Hey! Any thoughts today?" , "Im listening sir!", "Always there"};
-            ttsBridge.speak(welcomePhrases[(int)(Math.random()) * 3]);
+            ttsBridge.speak(welcomePhrases[(int)(Math.random() + 1) * 3]);
             runVoiceNode(manager, router, mapper, ttsBridge, memoryData, memory);
         }
     }
